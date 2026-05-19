@@ -1,0 +1,119 @@
+name: ChatOps
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  issues: write
+  pull-requests: write
+  contents: read
+
+jobs:
+  dispatch:
+    if: startsWith(github.event.comment.body, '/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check commenter permissions
+        id: perms
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: perm } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: context.actor,
+            });
+            const allowed = ['admin', 'maintain', 'write'];
+            if (!allowed.includes(perm.permission)) {
+              core.setFailed(`@${context.actor} lacks write access (has: ${perm.permission})`);
+            }
+
+      - name: Acknowledge command
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes',
+            });
+
+      - name: Parse and run command
+        id: run
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = context.payload.comment.body.trim();
+            const [cmd, ...rest] = body.slice(1).split(/\s+/);
+            const args = rest.join(' ');
+            const issue_number = context.payload.issue.number;
+            const { owner, repo } = context.repo;
+
+            const reply = (msg) => github.rest.issues.createComment({
+              owner, repo, issue_number, body: msg,
+            });
+
+            switch (cmd) {
+              case 'hello':
+                await reply(`👋 Hi @${context.actor}!`);
+                break;
+
+              case 'echo':
+                await reply(args ? `🔁 ${args}` : '_nothing to echo_');
+                break;
+
+              case 'label':
+                if (!args) { await reply('Usage: `/label <name>`'); break; }
+                await github.rest.issues.addLabels({
+                  owner, repo, issue_number, labels: [args],
+                });
+                await reply(`🏷️ Added label \`${args}\``);
+                break;
+
+              case 'close':
+                await github.rest.issues.update({
+                  owner, repo, issue_number, state: 'closed',
+                });
+                break;
+
+              case 'help':
+                await reply([
+                  '**Available commands**',
+                  '- `/hello` — say hi',
+                  '- `/echo <text>` — echo text back',
+                  '- `/label <name>` — add a label',
+                  '- `/close` — close this issue/PR',
+                  '- `/help` — show this message',
+                ].join('\n'));
+                break;
+
+              default:
+                core.setOutput('unknown', 'true');
+                await reply(`❓ Unknown command \`/${cmd}\`. Try \`/help\`.`);
+            }
+
+      - name: Mark success
+        if: success() && steps.run.outputs.unknown != 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'rocket',
+            });
+
+      - name: Mark failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'confused',
+            });
