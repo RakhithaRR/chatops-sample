@@ -5,9 +5,9 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node --watch index.js",
-    "tunnel": "smee -u $SMEE_URL -t http://localhost:${PORT:-3000}/webhook"
+    "start": "node --env-file=.env index.js",
+    "dev": "node --env-file=.env --watch index.js",
+    "tunnel": "node --env-file=.env scripts/tunnel.js"
   },
   "dependencies": {
     "@octokit/auth-app": "^8.2.0",

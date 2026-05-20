@@ -34,8 +34,10 @@ export async function handleCommand({ octokit, payload }) {
     });
 
   if (!(await hasWriteAccess(octokit, repoOwner, repo, actor))) {
+    console.log(`  skip: @${actor} lacks write access on ${repoOwner}/${repo}`);
     return;
   }
+  console.log(`  dispatch: /${cmd} args=${JSON.stringify(args)}`);
 
   await react(octokit, repoOwner, repo, commentId, "eyes");
 

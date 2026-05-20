@@ -31,12 +31,32 @@ const webhooks = new Webhooks({ secret: WEBHOOK_SECRET });
 
 webhooks.on("issue_comment.created", async ({ payload }) => {
   const body = payload.comment.body.trim();
-  if (!body.startsWith("/")) return;
-  if (payload.sender.type === "Bot") return;
-  if (!payload.installation?.id) return;
+  const actor = payload.sender.login;
+  const senderType = payload.sender.type;
+  const installId = payload.installation?.id;
+  console.log(
+    `[issue_comment.created] @${actor} (${senderType}) on #${payload.issue.number}: ${JSON.stringify(body.slice(0, 80))} install=${installId}`,
+  );
 
-  const octokit = await octokitForInstallation(payload.installation.id);
+  if (!body.startsWith("/")) {
+    console.log("  skip: not a slash command");
+    return;
+  }
+  if (senderType === "Bot") {
+    console.log("  skip: bot sender");
+    return;
+  }
+  if (!installId) {
+    console.log("  skip: no installation id on payload");
+    return;
+  }
+
+  const octokit = await octokitForInstallation(installId);
   await handleCommand({ octokit, payload });
+});
+
+webhooks.onAny(({ name }) => {
+  console.log(`[webhook] received ${name}`);
 });
 
 webhooks.onError((error) => {
