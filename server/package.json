@@ -1,0 +1,23 @@
+{
+  "name": "chatops-webhook-server",
+  "version": "1.0.0",
+  "description": "Webhook receiver that handles ChatOps slash commands without GitHub Actions.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "tunnel": "smee -u $SMEE_URL -t http://localhost:${PORT:-3000}/webhook"
+  },
+  "dependencies": {
+    "@octokit/auth-app": "^8.2.0",
+    "@octokit/rest": "^22.0.1",
+    "@octokit/webhooks": "^14.2.0"
+  },
+  "devDependencies": {
+    "smee-client": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
